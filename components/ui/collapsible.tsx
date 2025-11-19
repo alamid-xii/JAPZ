@@ -1,45 +1,88 @@
-import { PropsWithChildren, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
+"use client";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import React, { useState } from 'react';
+import { Platform, Text, TouchableOpacity, View } from 'react-native';
 
-export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
+// For web: use Radix UI
+// For native: use custom implementation
+let CollapsiblePrimitive: any = null;
+
+if (Platform.OS === 'web') {
+  try {
+    CollapsiblePrimitive = require("@radix-ui/react-collapsible");
+  } catch {
+    CollapsiblePrimitive = null;
+  }
+}
+
+interface CollapsibleProps {
+  title?: string;
+  children?: React.ReactNode;
+  [key: string]: any;
+}
+
+// Native-compatible Collapsible component
+function NativeCollapsible({
+  title,
+  children,
+  ...props
+}: CollapsibleProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const theme = useColorScheme() ?? 'light';
 
   return (
-    <ThemedView>
-      <TouchableOpacity
-        style={styles.heading}
-        onPress={() => setIsOpen((value) => !value)}
-        activeOpacity={0.8}>
-        <IconSymbol
-          name="chevron.right"
-          size={18}
-          weight="medium"
-          color={theme === 'light' ? Colors.light.icon : Colors.dark.icon}
-          style={{ transform: [{ rotate: isOpen ? '90deg' : '0deg' }] }}
-        />
-
-        <ThemedText type="defaultSemiBold">{title}</ThemedText>
-      </TouchableOpacity>
-      {isOpen && <ThemedView style={styles.content}>{children}</ThemedView>}
-    </ThemedView>
+    <View {...props}>
+      {title && (
+        <TouchableOpacity onPress={() => setIsOpen(!isOpen)}>
+          <Text>{title}</Text>
+        </TouchableOpacity>
+      )}
+      {isOpen && <View>{children}</View>}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  heading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  content: {
-    marginTop: 6,
-    marginLeft: 24,
-  },
-});
+function Collapsible({
+  title,
+  children,
+  ...props
+}: CollapsibleProps) {
+  if (Platform.OS === 'web' && CollapsiblePrimitive) {
+    return (
+      <CollapsiblePrimitive.Root data-slot="collapsible" {...props}>
+        {children}
+      </CollapsiblePrimitive.Root>
+    );
+  }
+  return <NativeCollapsible title={title} {...props}>{children}</NativeCollapsible>;
+}
+
+function CollapsibleTrigger({
+  ...props
+}: CollapsibleProps) {
+  if (Platform.OS === 'web' && CollapsiblePrimitive) {
+    return (
+      <CollapsiblePrimitive.CollapsibleTrigger
+        data-slot="collapsible-trigger"
+        {...props}
+      />
+    );
+  }
+  return <TouchableOpacity {...props} />;
+}
+
+function CollapsibleContent({
+  ...props
+}: CollapsibleProps) {
+  if (Platform.OS === 'web' && CollapsiblePrimitive) {
+    return (
+      <CollapsiblePrimitive.CollapsibleContent
+        data-slot="collapsible-content"
+        {...props}
+      />
+    );
+  }
+  return <View {...props} />;
+}
+
+export { Collapsible, CollapsibleContent, CollapsibleTrigger };
+
