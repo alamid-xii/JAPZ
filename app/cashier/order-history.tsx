@@ -1,3 +1,4 @@
+import { Banknote, CreditCard, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CashierBottomNav } from '../../components/shared/CashierBottomNav';
@@ -14,6 +15,16 @@ interface HistoryOrder {
   paymentMethod: 'cash' | 'card' | 'digital';
   cashier: string;
 }
+
+const getPaymentMethodIcon = (method: string) => {
+  const iconProps = { size: 16, color: Colors.light.primary };
+  switch (method) {
+    case 'cash': return <Banknote {...iconProps} />;
+    case 'card': return <CreditCard {...iconProps} />;
+    case 'digital': return <Smartphone {...iconProps} />;
+    default: return null;
+  }
+};
 
 const mockHistory: HistoryOrder[] = [
   {
@@ -50,12 +61,6 @@ const mockHistory: HistoryOrder[] = [
     cashier: 'Maria',
   },
 ];
-
-const paymentMethodIcons = {
-  cash: '💵',
-  card: '💳',
-  digital: '📱',
-};
 
 export default function OrderHistoryScreen() {
   const [search, setSearch] = useState('');
@@ -183,9 +188,9 @@ export default function OrderHistoryScreen() {
                 <Text style={{ color: Colors.light.mutedForeground }}>
                   {order.customerName}
                 </Text>
-                <Text style={{ fontSize: 18 }}>
-                  {paymentMethodIcons[order.paymentMethod]}
-                </Text>
+                <View style={{ width: 18 }}>
+                  {getPaymentMethodIcon(order.paymentMethod)}
+                </View>
               </View>
 
               {expanded === order.id && (

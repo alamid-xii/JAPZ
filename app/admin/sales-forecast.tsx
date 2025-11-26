@@ -1,5 +1,5 @@
+import { BarChart3 } from 'lucide-react-native';
 import { ScrollView, Text, View } from 'react-native';
-import { AdminBottomNav } from '../../components/shared/AdminBottomNav';
 import { Colors, Sizes } from '../../constants/colors';
 
 interface DailySales {
@@ -26,94 +26,90 @@ export default function SalesForecastScreen() {
   const bestDay = salesData.reduce((prev, curr) => curr.sales > prev.sales ? curr : prev);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, marginTop: Sizes.spacing.lg }}>
       <ScrollView
         style={{ flex: 1, backgroundColor: Colors.light.background }}
         contentContainerStyle={{ padding: Sizes.spacing.lg }}
       >
-        <Text style={{ fontSize: Sizes.typography.lg, fontWeight: '700', marginBottom: Sizes.spacing.lg }}>
+        <Text style={{ fontSize: Sizes.typography.xl, fontWeight: '700', marginBottom: Sizes.spacing.lg }}>
           Sales Forecast
         </Text>
 
         {/* Key Metrics */}
-        <View style={{ gap: Sizes.spacing.md, marginBottom: Sizes.spacing.xl }}>
+        <View style={{ flexDirection: 'row', gap: Sizes.spacing.sm, marginBottom: Sizes.spacing.lg }}>
           <View
             style={{
-              backgroundColor: Colors.light.card,
+              flex: 1,
+              backgroundColor: '#FFFBEB',
               borderRadius: Sizes.radius.md,
-              padding: Sizes.spacing.md,
+              padding: Sizes.spacing.sm,
+              alignItems: 'center',
               borderLeftWidth: 4,
               borderLeftColor: Colors.light.primary,
             }}
           >
-            <Text style={{ color: Colors.light.mutedForeground, marginBottom: Sizes.spacing.sm, fontSize: Sizes.typography.sm }}>
+            <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.xs }}>
               Weekly Revenue
             </Text>
-            <Text style={{ fontSize: Sizes.typography.xl, fontWeight: '700', marginBottom: Sizes.spacing.sm }}>
-              ₱{totalWeekSales.toLocaleString()}
-            </Text>
-            <Text style={{ color: '#10B981', fontSize: Sizes.typography.xs, fontWeight: '600' }}>
-              ↑ 18% from last week
+            <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700', marginTop: 4 }}>
+              ₱{(totalWeekSales / 1000).toFixed(1)}k
             </Text>
           </View>
 
           <View
             style={{
-              flexDirection: 'row',
-              gap: Sizes.spacing.md,
+              flex: 1,
+              backgroundColor: '#FFFBEB',
+              borderRadius: Sizes.radius.md,
+              padding: Sizes.spacing.sm,
+              alignItems: 'center',
+              borderLeftWidth: 4,
+              borderLeftColor: '#3B82F6',
             }}
           >
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: Colors.light.card,
-                borderRadius: Sizes.radius.md,
-                padding: Sizes.spacing.md,
-                borderLeftWidth: 4,
-                borderLeftColor: '#3B82F6',
-              }}
-            >
-              <Text style={{ color: Colors.light.mutedForeground, marginBottom: Sizes.spacing.sm, fontSize: Sizes.typography.xs }}>
-                Avg Daily
-              </Text>
-              <Text style={{ fontSize: Sizes.typography.lg, fontWeight: '700' }}>
-                ₱{avgDailySales.toLocaleString()}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: Colors.light.card,
-                borderRadius: Sizes.radius.md,
-                padding: Sizes.spacing.md,
-                borderLeftWidth: 4,
-                borderLeftColor: '#8B5CF6',
-              }}
-            >
-              <Text style={{ color: Colors.light.mutedForeground, marginBottom: Sizes.spacing.sm, fontSize: Sizes.typography.xs }}>
-                Total Orders
-              </Text>
-              <Text style={{ fontSize: Sizes.typography.lg, fontWeight: '700' }}>
-                {totalOrders}
-              </Text>
-            </View>
+            <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.xs }}>
+              Avg Daily
+            </Text>
+            <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700', marginTop: 4 }}>
+              ₱{(avgDailySales / 1000).toFixed(1)}k
+            </Text>
           </View>
 
           <View
             style={{
-              backgroundColor: Colors.light.card,
+              flex: 1,
+              backgroundColor: '#FFFBEB',
               borderRadius: Sizes.radius.md,
-              padding: Sizes.spacing.md,
+              padding: Sizes.spacing.sm,
+              alignItems: 'center',
+              borderLeftWidth: 4,
+              borderLeftColor: '#8B5CF6',
+            }}
+          >
+            <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.xs }}>
+              Total Orders
+            </Text>
+            <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700', marginTop: 4 }}>
+              {totalOrders}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: '#FFFBEB',
+              borderRadius: Sizes.radius.md,
+              padding: Sizes.spacing.sm,
+              alignItems: 'center',
               borderLeftWidth: 4,
               borderLeftColor: '#F59E0B',
             }}
           >
-            <Text style={{ color: Colors.light.mutedForeground, marginBottom: Sizes.spacing.sm, fontSize: Sizes.typography.sm }}>
+            <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.xs }}>
               Best Day
             </Text>
-            <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700' }}>
-              {bestDay.day} - ₱{bestDay.sales.toLocaleString()} ({bestDay.orders} orders)
+            <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700', marginTop: 4, color: Colors.light.primary }}>
+              {bestDay.day}
             </Text>
           </View>
         </View>
@@ -173,9 +169,12 @@ export default function SalesForecastScreen() {
 
         {/* Insights */}
         <View style={{ backgroundColor: Colors.light.card, borderRadius: Sizes.radius.md, padding: Sizes.spacing.md, marginTop: Sizes.spacing.lg }}>
-          <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700', marginBottom: Sizes.spacing.md }}>
-            📊 Insights
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Sizes.spacing.md, gap: Sizes.spacing.sm }}>
+            <BarChart3 size={20} color={Colors.light.primary} />
+            <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700' }}>
+              Insights
+            </Text>
+          </View>
           <View style={{ gap: Sizes.spacing.sm }}>
             <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.sm, lineHeight: 20 }}>
               • Weekend sales are 35% higher than weekdays
@@ -189,7 +188,6 @@ export default function SalesForecastScreen() {
           </View>
         </View>
       </ScrollView>
-      <AdminBottomNav currentScreen="settings" />
     </View>
   );
 }

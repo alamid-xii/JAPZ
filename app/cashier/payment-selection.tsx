@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { Banknote, Check, CreditCard, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors, Sizes } from '../../constants/colors';
@@ -9,6 +10,16 @@ interface Payment {
   discount: number;
   vat: number;
 }
+
+const getPaymentIcon = (method: string) => {
+  const iconProps = { size: 24, color: Colors.light.primary };
+  switch (method) {
+    case 'cash': return <Banknote {...iconProps} />;
+    case 'card': return <CreditCard {...iconProps} />;
+    case 'digital': return <Smartphone {...iconProps} />;
+    default: return null;
+  }
+};
 
 export default function PaymentSelectionScreen() {
   const router = useRouter();
@@ -56,9 +67,7 @@ export default function PaymentSelectionScreen() {
             }}
             onPress={() => setPayment({ ...payment, method })}
           >
-            <Text style={{ fontSize: 24 }}>
-              {method === 'cash' ? '💵' : method === 'card' ? '💳' : '📱'}
-            </Text>
+            {getPaymentIcon(method)}
             <View style={{ flex: 1 }}>
               <Text
                 style={{
@@ -72,7 +81,9 @@ export default function PaymentSelectionScreen() {
               </Text>
             </View>
             {payment.method === method && (
-              <Text style={{ color: '#fff', fontSize: 18 }}>✓</Text>
+              <View style={{ width: 18, alignItems: 'center' }}>
+                <Check size={18} color="#fff" />
+              </View>
             )}
           </TouchableOpacity>
         ))}

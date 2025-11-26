@@ -1,59 +1,61 @@
 // app/(admin)/employees.tsx
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { AdminBottomNav } from '../../components/shared/AdminBottomNav';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { ChevronDown, ChevronRight, Truck, UserCheck, Users, UtensilsCrossed, Trash2 } from 'lucide-react-native';
+import { useState, useCallback } from 'react';
+import { ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { Colors, Sizes } from '../../constants/colors';
+import { employeeAPI } from '../../services/api';
 
 interface Employee {
-  id: string;
+  id: number;
   name: string;
   email: string;
-  role: 'manager' | 'cashier' | 'kitchen' | 'delivery';
+  phone: string;
+  role: 'cashier' | 'kitchen';
   status: 'active' | 'inactive';
   joinDate: string;
+  station?: {
+    id: number;
+    name: string;
+    category: string;
+  };
 }
 
-const mockEmployees: Employee[] = [
-  {
-    id: '1',
-    name: 'Maria Santos',
-    email: 'maria@restaurant.com',
-    role: 'cashier',
-    status: 'active',
-    joinDate: '2023-01-15',
-  },
-  {
-    id: '2',
-    name: 'Juan Dela Cruz',
-    email: 'juan@restaurant.com',
-    role: 'kitchen',
-    status: 'active',
-    joinDate: '2023-02-20',
-  },
-  {
-    id: '3',
-    name: 'Pedro Garcia',
-    email: 'pedro@restaurant.com',
-    role: 'manager',
-    status: 'active',
-    joinDate: '2022-11-10',
-  },
-];
-
-const roleIcons = {
-  manager: '👨‍💼',
-  cashier: '💳',
-  kitchen: '👨‍🍳',
-  delivery: '🚚',
+const getRoleIcon = (role: string) => {
+  const iconProps = { size: 20, color: Colors.light.primary };
+  switch (role) {
+    case 'cashier': return <Users {...iconProps} />;
+    case 'kitchen': return <UtensilsCrossed {...iconProps} />;
+    default: return null;
+  }
 };
 
 export default function EmployeesScreen() {
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [filterRole, setFilterRole] = useState<'all' | Employee['role']>('all');
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [filterRole, setFilterRole] = useState<'all' | 'cashier' | 'kitchen'>('all');
+
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const response = await employeeAPI.getAll();
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      Alert.alert('Error', 'Failed to load employees');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadEmployees();
+    }, [])
+  );
 
   const filteredEmployees = employees.filter(emp => {
     const matchSearch = emp.name.toLowerCase().includes(search.toLowerCase()) || emp.email.toLowerCase().includes(search.toLowerCase());
@@ -61,27 +63,73 @@ export default function EmployeesScreen() {
     return matchSearch && matchRole;
   });
 
-  const toggleExpand = (id: string) => {
+  const toggleExpand = (id: number) => {
     setExpanded(expanded === id ? null : id);
   };
 
-  const toggleStatus = (id: string) => {
-    setEmployees(
-      employees.map(emp =>
-        emp.id === id ? { ...emp, status: emp.status === 'active' ? 'inactive' : 'active' } : emp
-      )
+  const handleDelete = (id: number, name: string) => {
+    Alert.alert(
+      'Delete Employee',
+      `Are you sure you want to delete ${name}?`,
+      [
+        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            try {
+              await employeeAPI.delete(id);
+              setEmployees(employees.filter(emp => emp.id !== id));
+              Alert.alert('Success', 'Employee deleted successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.response?.data?.error || 'Failed to delete employee');
+            }
+          },
+          style: 'destructive',
+        },
+      ]
     );
   };
 
+  const handleStatusToggle = async (id: number, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const response = await employeeAPI.update(id, { status: newStatus });
+      setEmployees(
+        employees.map(emp =>
+          emp.id === id ? { ...emp, status: newStatus as 'active' | 'inactive' } : emp
+        )
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.error || 'Failed to update employee status');
+    }
+  };
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, marginTop: Sizes.spacing.lg }}>
       <ScrollView
         style={{ flex: 1, backgroundColor: Colors.light.background }}
         contentContainerStyle={{ padding: Sizes.spacing.lg }}
       >
-        <Text style={{ fontSize: Sizes.typography.lg, fontWeight: '700', marginBottom: Sizes.spacing.lg }}>
-          Employee Management
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.xl, fontWeight: '700' }}>
+            Employee Management
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#FFCE1B',
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onPress={() => router.push('/admin/employee-form')}
+          >
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff'}}>
+              +
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Search */}
         <TextInput
@@ -102,22 +150,22 @@ export default function EmployeesScreen() {
 
         {/* Role Filter */}
         <View style={{ flexDirection: 'row', gap: Sizes.spacing.sm, marginBottom: Sizes.spacing.lg }}>
-          {(['all', 'manager', 'cashier', 'kitchen', 'delivery'] as const).map((role) => (
+          {(['all', 'cashier', 'kitchen'] as const).map((role) => (
             <TouchableOpacity
               key={role}
               style={{
                 paddingVertical: Sizes.spacing.sm,
                 paddingHorizontal: Sizes.spacing.md,
                 borderRadius: Sizes.radius.sm,
-                backgroundColor: filterRole === role ? Colors.light.primary : Colors.light.card,
+                backgroundColor: filterRole === role ? '#FFCE1B' : Colors.light.card,
                 borderWidth: 1,
-                borderColor: filterRole === role ? Colors.light.primary : Colors.light.border,
+                borderColor: filterRole === role ? '#FFCE1B' : Colors.light.border,
               }}
-              onPress={() => setFilterRole(role)}
+              onPress={() => setFilterRole(role as 'all' | 'cashier' | 'kitchen')}
             >
               <Text
                 style={{
-                  color: filterRole === role ? '#fff' : Colors.light.foreground,
+                  color: filterRole === role ? '#030213' : Colors.light.foreground,
                   fontWeight: '600',
                   fontSize: Sizes.typography.xs,
                   textTransform: 'capitalize',
@@ -145,9 +193,9 @@ export default function EmployeesScreen() {
               onPress={() => toggleExpand(employee.id)}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: Sizes.spacing.md, marginBottom: Sizes.spacing.sm }}>
-                <Text style={{ fontSize: 28 }}>
-                  {roleIcons[employee.role]}
-                </Text>
+                <View style={{ width: 28 }}>
+                  {getRoleIcon(employee.role)}
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: Sizes.typography.base, fontWeight: '700' }}>
                     {employee.name}
@@ -181,9 +229,7 @@ export default function EmployeesScreen() {
                 <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.sm }}>
                   Joined {employee.joinDate}
                 </Text>
-                <Text style={{ fontSize: 18 }}>
-                  {expanded === employee.id ? '▼' : '▶'}
-                </Text>
+                {expanded === employee.id ? <ChevronDown size={18} color={Colors.light.primary} /> : <ChevronRight size={18} color={Colors.light.primary} />}
               </View>
 
               {expanded === employee.id && (
@@ -215,7 +261,7 @@ export default function EmployeesScreen() {
                       borderRadius: Sizes.radius.sm,
                       marginBottom: Sizes.spacing.sm,
                     }}
-                    onPress={() => toggleStatus(employee.id)}
+                    onPress={() => handleStatusToggle(employee.id, employee.status)}
                   >
                     <Text
                       style={{
@@ -231,20 +277,35 @@ export default function EmployeesScreen() {
 
                   <TouchableOpacity
                     style={{
-                      backgroundColor: Colors.light.primary,
+                      backgroundColor: '#FEE2E2',
                       paddingVertical: Sizes.spacing.sm,
                       paddingHorizontal: Sizes.spacing.md,
                       borderRadius: Sizes.radius.sm,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: Sizes.spacing.sm,
                     }}
+                    onPress={() => handleDelete(employee.id, employee.name)}
                   >
-                    <Text style={{ textAlign: 'center', color: '#fff', fontWeight: '600', fontSize: Sizes.typography.sm }}>
-                      Edit Employee
+                    <Trash2 size={16} color="#991B1B" />
+                    <Text
+                      style={{
+                        textAlign: 'center',
+                        color: '#991B1B',
+                        fontWeight: '600',
+                        fontSize: Sizes.typography.sm,
+                      }}
+                    >
+                      Delete
                     </Text>
                   </TouchableOpacity>
                 </View>
               )}
             </TouchableOpacity>
           ))
+        ) : loading ? (
+          <ActivityIndicator size="large" color={Colors.light.primary} style={{ marginVertical: Sizes.spacing.xl }} />
         ) : (
           <View style={{ alignItems: 'center', paddingVertical: Sizes.spacing.xl }}>
             <Text style={{ color: Colors.light.mutedForeground, fontSize: Sizes.typography.base }}>
@@ -254,22 +315,8 @@ export default function EmployeesScreen() {
         )}
 
         {/* Add Employee Button */}
-        <TouchableOpacity
-          style={{
-            backgroundColor: Colors.light.primary,
-            paddingVertical: Sizes.spacing.lg,
-            borderRadius: Sizes.radius.md,
-            alignItems: 'center',
-            marginTop: Sizes.spacing.lg,
-          }}
-          onPress={() => router.push('/admin/employee-form')}
-        >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: Sizes.typography.base }}>
-            + Add New Employee
-          </Text>
-        </TouchableOpacity>
+        
       </ScrollView>
-      <AdminBottomNav currentScreen="employees" />
     </View>
   );
 }

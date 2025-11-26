@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { LayoutDashboard, Package, Settings, Users } from 'lucide-react-native';
+import { LayoutDashboard, MessageCircle, Package, Settings, TrendingUp, Users } from 'lucide-react-native';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Sizes } from '../../constants/colors';
 
@@ -14,6 +14,8 @@ export function AdminBottomNav({ currentScreen }: AdminBottomNavProps) {
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', route: '/admin/dashboard' },
     { id: 'employees', icon: Users, label: 'Employees', route: '/admin/employees' },
     { id: 'menu', icon: Package, label: 'Menu', route: '/admin/menu-inventory' },
+    { id: 'feedback', icon: MessageCircle, label: 'Feedback', route: '/admin/feedback-hub' },
+    { id: 'sales', icon: TrendingUp, label: 'Sales', route: '/admin/sales-forecast' },
     { id: 'settings', icon: Settings, label: 'Settings', route: '/admin/setings' },
   ];
 
@@ -33,7 +35,7 @@ export function AdminBottomNav({ currentScreen }: AdminBottomNavProps) {
         borderTopWidth: 1,
         borderTopColor: Colors.light.border,
         paddingVertical: Sizes.spacing.sm,
-        paddingBottom: Sizes.spacing.lg,
+        paddingBottom: Sizes.spacing.xl
       }}
     >
       {navItems.map((item) => {

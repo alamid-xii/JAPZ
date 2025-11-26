@@ -35,13 +35,13 @@ export default function WelcomeScreen() {
 
         {/* Login Link */}
         <View style={{ marginTop: 16, alignItems: 'center' }}>
-          <Text style={authStyles.linkText}>
+          <Text>
             Already have an account?{' '}
             <Text
-              style={authStyles.linkHighlight}
+              style={[authStyles.linkHighlight, authStyles.linkText]}
               onPress={() => router.push('/auth/login')}
             >
-              Login
+              Login Here
             </Text>
           </Text>
         </View>

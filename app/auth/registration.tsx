@@ -1,27 +1,28 @@
-// app/(auth)/registration.tsx
-import { Link, useRouter } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Eye, EyeOff } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, Image, KeyboardAvoidingView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../../hooks/useAuth';
 import { authStyles } from '../../styles/authStyles';
 
 export default function RegistrationScreen() {
+  const router = useRouter();
+  const { register, loading } = useAuth();
   const [formData, setFormData] = useState({
-    fullName: '',
+    name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'admin',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
     }
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
@@ -40,61 +41,49 @@ export default function RegistrationScreen() {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      setLoading(true);
-      // Simulate registration
-      setTimeout(() => {
-        setLoading(false);
-        router.replace('/auth/login' as any);
-      }, 1000);
+      try {
+        await register(formData.name, formData.email, formData.password);
+        Alert.alert('Success', 'Registration successful! Please log in.');
+        router.replace('./login' as any);
+      } catch (err: any) {
+        Alert.alert('Registration Failed', err.message);
+      }
     }
   };
 
   return (
-    <ScrollView style={authStyles.container} contentContainerStyle={authStyles.content}>
-      <TouchableOpacity
-        style={authStyles.backButton}
-        onPress={() => router.back()}
-      >
-        <ChevronLeft size={20} color="#000000" />
-        <Text style={authStyles.backButtonText}>Back</Text>
-      </TouchableOpacity>
-
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={{ flex: 1 }}
+    >
+      <ScrollView style={authStyles.container} contentContainerStyle={authStyles.content} scrollEnabled keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <Image
         source={require('../../assets/images/logo.jpg')}
         style={[authStyles.logo, { alignSelf: 'center' }] as any}
         resizeMode="contain"
       />
 
-      <Text style={authStyles.title}>Create Your Account</Text>
-      <Text style={authStyles.subtitle}>
-        Get started with JAPZ MobilePOS
-      </Text>
+      <Text style={[authStyles.title, { marginTop: -50 }]}>Create Your Account</Text>
+      <Text style={authStyles.subtitle}>Get started with JAPZ MobilePOS</Text>
 
       <View style={authStyles.form}>
         <View style={authStyles.inputGroup}>
           <Text style={authStyles.label}>Full Name</Text>
           <TextInput
-            style={[
-              authStyles.input,
-              errors.fullName && authStyles.inputError
-            ]}
+            style={[authStyles.input, errors.name && authStyles.inputError]}
             placeholder="Enter your full name"
             placeholderTextColor="#C3C3C3"
-            value={formData.fullName}
-            onChangeText={(text) => setFormData({ ...formData, fullName: text })}
+            value={formData.name}
+            onChangeText={(text) => setFormData({ ...formData, name: text })}
+            autoCapitalize="words"
           />
-          {errors.fullName && (
-            <Text style={authStyles.errorText}>{errors.fullName}</Text>
-          )}
+          {errors.name && <Text style={authStyles.errorText}>{errors.name}</Text>}
         </View>
 
         <View style={authStyles.inputGroup}>
           <Text style={authStyles.label}>Email Address</Text>
           <TextInput
-            style={[
-              authStyles.input,
-              errors.email && authStyles.inputError
-            ]}
+            style={[authStyles.input, errors.email && authStyles.inputError]}
             placeholder="Enter your email"
             placeholderTextColor="#C3C3C3"
             value={formData.email}
@@ -102,75 +91,71 @@ export default function RegistrationScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          {errors.email && (
-            <Text style={authStyles.errorText}>{errors.email}</Text>
-          )}
-        </View>
-
-        <View style={authStyles.inputGroup}>
-          <Text style={authStyles.label}>Role</Text>
-          <View style={authStyles.roleContainer}>
-            {['admin', 'cashier', 'kitchen'].map((role) => (
-              <TouchableOpacity
-                key={role}
-                style={[
-                  authStyles.roleButton,
-                  formData.role === role && authStyles.roleButtonSelected
-                ]}
-                onPress={() => setFormData({ ...formData, role })}
-              >
-                <Text style={[
-                  authStyles.roleButtonText,
-                  formData.role === role && authStyles.roleButtonTextSelected
-                ]}>
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {errors.email && <Text style={authStyles.errorText}>{errors.email}</Text>}
         </View>
 
         <View style={authStyles.inputGroup}>
           <Text style={authStyles.label}>Password</Text>
-          <TextInput
-            style={[
-              authStyles.input,
-              errors.password && authStyles.inputError
-            ]}
-            placeholder="Enter password"
-            placeholderTextColor="#C3C3C3"
-            value={formData.password}
-            onChangeText={(text) => setFormData({ ...formData, password: text })}
-            secureTextEntry
-          />
-          {errors.password && (
-            <Text style={authStyles.errorText}>{errors.password}</Text>
-          )}
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              style={[authStyles.input, errors.password && authStyles.inputError]}
+              placeholder="Enter password"
+              placeholderTextColor="#C3C3C3"
+              value={formData.password}
+              onChangeText={(text) => setFormData({ ...formData, password: text })}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={{
+                position: 'absolute',
+                right: 12,
+                top: '50%',
+                transform: [{ translateY: -12 }],
+              }}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <Eye size={20} color="#666" />
+              ) : (
+                <EyeOff size={20} color="#666" />
+              )}
+            </TouchableOpacity>
+          </View>
+          {errors.password && <Text style={authStyles.errorText}>{errors.password}</Text>}
         </View>
 
         <View style={authStyles.inputGroup}>
           <Text style={authStyles.label}>Confirm Password</Text>
-          <TextInput
-            style={[
-              authStyles.input,
-              errors.confirmPassword && authStyles.inputError
-            ]}
-            placeholder="Confirm password"
-            placeholderTextColor="#C3C3C3"
-            value={formData.confirmPassword}
-            onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
-            secureTextEntry
-          />
-          {errors.confirmPassword && (
-            <Text style={authStyles.errorText}>{errors.confirmPassword}</Text>
-          )}
+          <View style={{ position: 'relative' }}>
+            <TextInput
+              style={[authStyles.input, errors.confirmPassword && authStyles.inputError]}
+              placeholder="Confirm password"
+              placeholderTextColor="#C3C3C3"
+              value={formData.confirmPassword}
+              onChangeText={(text) => setFormData({ ...formData, confirmPassword: text })}
+              secureTextEntry={!showConfirmPassword}
+            />
+            <TouchableOpacity
+              style={{
+                position: 'absolute',
+                right: 12,
+                top: '50%',
+                transform: [{ translateY: -12 }],
+              }}
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? (
+                <Eye size={20} color="#666" />
+              ) : (
+                <EyeOff size={20} color="#666" />
+              )}
+            </TouchableOpacity>
+          </View>
+          {errors.confirmPassword && <Text style={authStyles.errorText}>{errors.confirmPassword}</Text>}
         </View>
 
-        <TouchableOpacity 
-          style={[
-            authStyles.primaryButton,
-            loading && authStyles.buttonDisabled
-          ]} 
+        <TouchableOpacity
+          style={[authStyles.primaryButton, loading && authStyles.buttonDisabled]}
           onPress={handleSubmit}
           disabled={loading}
         >
@@ -180,13 +165,12 @@ export default function RegistrationScreen() {
         </TouchableOpacity>
       </View>
 
-      <Link href="./login" asChild>
-        <TouchableOpacity style={authStyles.linkButton}>
-          <Text style={authStyles.linkText}>
-            Already have an account? <Text style={authStyles.linkHighlight}>Login</Text>
-          </Text>
-        </TouchableOpacity>
-      </Link>
+      <TouchableOpacity style={authStyles.linkButton} onPress={() => router.push('./login')}>
+        <Text>
+          Already have an account? <Text style={[authStyles.linkHighlight, authStyles.linkText]}>Login</Text>
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

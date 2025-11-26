@@ -219,9 +219,12 @@ export default function KitchenDisplayScreen() {
                 </TouchableOpacity>
               )}
               {item.status === 'ready' && (
-                <Text style={{ color: '#10B981', fontWeight: '600', flex: 1, textAlign: 'center' }}>
-                  ✓ Ready for Pickup
-                </Text>
+                <View style={{ flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+                  <CheckCircle size={18} color="#10B981" />
+                  <Text style={{ color: '#10B981', fontWeight: '600' }}>
+                    Ready for Pickup
+                  </Text>
+                </View>
               )}
             </View>
           </View>

@@ -41,9 +41,9 @@ export const authStyles = StyleSheet.create<Record<string, CombinedStyle | Image
   primaryButton: {
     backgroundColor: Colors.brand.primary,
     borderRadius: Sizes.radius.lg,
-    paddingVertical: Sizes.spacing.lg,
+    paddingVertical: Sizes.spacing.md,
     paddingHorizontal: Sizes.spacing.xl,
-    width: '100%',
+    alignSelf: 'center',
     alignItems: 'center',
     marginBottom: Sizes.spacing.md,
     ...GlobalStyles.shadowSm,
@@ -121,7 +121,7 @@ export const authStyles = StyleSheet.create<Record<string, CombinedStyle | Image
     alignItems: 'center',
   } as CombinedStyle,
   linkHighlight: {
-    color: Colors.brand.primary,
+    color: '#BA8e23',
     textDecorationLine: 'underline',
   } as CombinedStyle,
 

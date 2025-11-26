@@ -1,334 +1,421 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, RefreshCw } from 'lucide-react-native';
-import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ArrowLeft, Check } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { Colors, Sizes } from '../../constants/colors';
+import { employeeAPI, kitchenStationAPI } from '../../services/api';
 
-interface EmployeeFormProps {
-  employee?: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    station?: string;
-    pin: string;
-  };
+interface FormData {
+  name: string;
+  email: string;
+  phone: string;
+  role: 'cashier' | 'kitchen';
+  joinDate: string;
+  password: string;
+  confirmPassword: string;
+  assignedStationId?: number;
 }
+
+interface KitchenStation {
+  id: number;
+  name: string;
+  category: string;
+}
+
+const roles = ['cashier', 'kitchen'];
 
 export default function EmployeeFormScreen() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
+    phone: '',
     role: 'cashier',
-    station: '',
+    joinDate: new Date().toISOString().split('T')[0],
+    password: '',
+    confirmPassword: '',
+    assignedStationId: undefined,
   });
+  const [showStationDropdown, setShowStationDropdown] = useState(false);
+  const [kitchenStations, setKitchenStations] = useState<KitchenStation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [stationsLoading, setStationsLoading] = useState(true);
 
-  const [pin, setPin] = useState(generatePin());
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
-  const [showStationMenu, setShowStationMenu] = useState(false);
+  useEffect(() => {
+    loadKitchenStations();
+  }, []);
 
-  function generatePin() {
-    return Math.floor(1000 + Math.random() * 9000).toString();
-  }
-
-  const handleSubmit = () => {
-    if (!formData.name.trim()) {
-      Alert.alert('Validation Error', 'Please enter employee name');
-      return;
+  const loadKitchenStations = async () => {
+    try {
+      setStationsLoading(true);
+      const response = await kitchenStationAPI.getAll();
+      setKitchenStations(response.data);
+    } catch (error) {
+      console.error('Error loading kitchen stations:', error);
+      Alert.alert('Error', 'Failed to load kitchen stations');
+    } finally {
+      setStationsLoading(false);
     }
-    if (!formData.email.trim()) {
-      Alert.alert('Validation Error', 'Please enter email address');
-      return;
-    }
-    Alert.alert('Success', 'Employee saved successfully');
-    router.back();
   };
 
-  const stations = ['Burger Station', 'Pasta & Fries', 'Coffee & Beverage'];
-  const roles = [
-    { label: 'Cashier', value: 'cashier' },
-    { label: 'Kitchen Staff', value: 'kitchen' },
-    { label: 'Admin', value: 'admin' },
-  ];
+  const handleInputChange = (field: keyof FormData, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
+      Alert.alert('Validation Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (formData.role === 'kitchen' && !formData.assignedStationId) {
+      Alert.alert('Validation Error', 'Please assign a kitchen station');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await employeeAPI.create({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        role: formData.role,
+        assignedStationId: formData.assignedStationId,
+        joinDate: formData.joinDate,
+      });
+
+      Alert.alert('Success', `Employee ${formData.name} has been added`, [
+        {
+          text: 'OK',
+          onPress: () => router.push('/admin/employees'),
+        },
+      ]);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Failed to create employee';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: Colors.light.background, marginTop: Sizes.spacing.lg }}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft size={24} color={Colors.light.foreground} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: Sizes.spacing.lg,
+          paddingVertical: Sizes.spacing.md,
+          backgroundColor: Colors.light.card,
+          borderBottomWidth: 1,
+          borderBottomColor: Colors.light.border,
+        }}
+      >
+        <TouchableOpacity onPress={() => router.push('/admin/employees')} style={{ marginRight: Sizes.spacing.md }}>
+          <ArrowLeft size={24} color='#000000' />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Employee</Text>
+        <Text style={{ fontSize: Sizes.typography.lg, fontWeight: '700', color: Colors.light.foreground }}>
+          Add Employee
+        </Text>
       </View>
 
-      {/* Form */}
-      <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-        {/* Full Name */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Full Name</Text>
+      <ScrollView
+        contentContainerStyle={{
+          padding: Sizes.spacing.lg,
+          paddingBottom: Sizes.spacing.xl,
+        }}
+      >
+        {/* Name Field */}
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Full Name *
+          </Text>
           <TextInput
-            style={styles.input}
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.light.border,
+              borderRadius: 8,
+              paddingHorizontal: Sizes.spacing.md,
+              paddingVertical: Sizes.spacing.sm,
+              fontSize: Sizes.typography.base,
+              color: Colors.light.foreground,
+            }}
             placeholder="Enter employee name"
-            placeholderTextColor={Colors.light.muted}
+            placeholderTextColor={Colors.light.mutedForeground}
             value={formData.name}
-            onChangeText={(text) => setFormData({ ...formData, name: text })}
+            onChangeText={(value) => handleInputChange('name', value)}
           />
         </View>
 
-        {/* Email Address */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Email Address</Text>
+        {/* Email Field */}
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Email Address *
+          </Text>
           <TextInput
-            style={styles.input}
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.light.border,
+              borderRadius: 8,
+              paddingHorizontal: Sizes.spacing.md,
+              paddingVertical: Sizes.spacing.sm,
+              fontSize: Sizes.typography.base,
+              color: Colors.light.foreground,
+            }}
             placeholder="Enter email address"
-            placeholderTextColor={Colors.light.muted}
-            value={formData.email}
-            onChangeText={(text) => setFormData({ ...formData, email: text })}
+            placeholderTextColor={Colors.light.mutedForeground}
             keyboardType="email-address"
+            value={formData.email}
+            onChangeText={(value) => handleInputChange('email', value)}
+          />
+        </View>
+
+        {/* Phone Field */}
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Phone Number *
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.light.border,
+              borderRadius: 8,
+              paddingHorizontal: Sizes.spacing.md,
+              paddingVertical: Sizes.spacing.sm,
+              fontSize: Sizes.typography.base,
+              color: Colors.light.foreground,
+            }}
+            placeholder="Enter phone number"
+            placeholderTextColor={Colors.light.mutedForeground}
+            keyboardType="phone-pad"
+            value={formData.phone}
+            onChangeText={(value) => handleInputChange('phone', value)}
           />
         </View>
 
         {/* Role Selection */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Role</Text>
-          <TouchableOpacity
-            style={styles.selectButton}
-            onPress={() => setShowRoleMenu(!showRoleMenu)}
-          >
-            <Text style={styles.selectText}>
-              {roles.find((r) => r.value === formData.role)?.label || 'Select Role'}
-            </Text>
-          </TouchableOpacity>
-          {showRoleMenu && (
-            <View style={styles.dropdown}>
-              {roles.map((role) => (
-                <TouchableOpacity
-                  key={role.value}
-                  style={[
-                    styles.dropdownItem,
-                    formData.role === role.value && styles.dropdownItemSelected,
-                  ]}
-                  onPress={() => {
-                    setFormData({ ...formData, role: role.value, station: '' });
-                    setShowRoleMenu(false);
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Role *
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Sizes.spacing.sm }}>
+            {roles.map((role) => (
+              <TouchableOpacity
+                key={role}
+                style={{
+                  paddingHorizontal: Sizes.spacing.md,
+                  paddingVertical: Sizes.spacing.sm,
+                  borderRadius: 20,
+                  backgroundColor: formData.role === role ? '#FFCE1B' : Colors.light.card,
+                  borderWidth: 1,
+                  borderColor: formData.role === role ? '#FFCE1B' : Colors.light.border,
+                }}
+                onPress={() => {
+                  handleInputChange('role', role as any);
+                  if (role !== 'kitchen') {
+                    handleInputChange('assignedStationId', 0);
+                  }
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: Sizes.typography.sm,
+                    fontWeight: '500',
+                    color: formData.role === role ? '#030213' : Colors.light.foreground,
+                    textTransform: 'capitalize',
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.dropdownItemText,
-                      formData.role === role.value && styles.dropdownItemTextSelected,
-                    ]}
-                  >
-                    {role.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+                  {role}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* Station Assignment (only for Kitchen Staff) */}
+        {/* Kitchen Station Selection - Only show if kitchen role is selected */}
         {formData.role === 'kitchen' && (
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Station Assignment</Text>
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={() => setShowStationMenu(!showStationMenu)}
-            >
-              <Text style={styles.selectText}>
-                {formData.station || 'Select Station'}
-              </Text>
-            </TouchableOpacity>
-            {showStationMenu && (
-              <View style={styles.dropdown}>
-                {stations.map((station) => (
-                  <TouchableOpacity
-                    key={station}
-                    style={[
-                      styles.dropdownItem,
-                      formData.station === station && styles.dropdownItemSelected,
-                    ]}
-                    onPress={() => {
-                      setFormData({ ...formData, station });
-                      setShowStationMenu(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        formData.station === station && styles.dropdownItemTextSelected,
-                      ]}
-                    >
-                      {station}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+          <View style={{ marginBottom: Sizes.spacing.lg }}>
+            <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+              Assign Kitchen Station *
+            </Text>
+            {stationsLoading ? (
+              <ActivityIndicator size="large" color={Colors.light.primary} />
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={{
+                    borderWidth: 1,
+                    borderColor: Colors.light.border,
+                    borderRadius: 8,
+                    paddingHorizontal: Sizes.spacing.md,
+                    paddingVertical: Sizes.spacing.md,
+                    backgroundColor: Colors.light.card,
+                  }}
+                  onPress={() => setShowStationDropdown(!showStationDropdown)}
+                >
+                  <Text style={{ fontSize: Sizes.typography.base, color: formData.assignedStationId ? Colors.light.foreground : Colors.light.mutedForeground }}>
+                    {formData.assignedStationId ? kitchenStations.find(s => s.id === formData.assignedStationId)?.name : 'Select a station'}
+                  </Text>
+                </TouchableOpacity>
+
+                {showStationDropdown && (
+                  <View style={{
+                    borderWidth: 1,
+                    borderColor: Colors.light.border,
+                    borderRadius: 8,
+                    marginTop: Sizes.spacing.sm,
+                    backgroundColor: Colors.light.card,
+                    overflow: 'hidden',
+                  }}>
+                    {kitchenStations.map((station) => (
+                      <TouchableOpacity
+                        key={station.id}
+                        style={{
+                          paddingHorizontal: Sizes.spacing.md,
+                          paddingVertical: Sizes.spacing.md,
+                          borderBottomWidth: 1,
+                          borderBottomColor: Colors.light.border,
+                        }}
+                        onPress={() => {
+                          handleInputChange('assignedStationId', station.id);
+                          setShowStationDropdown(false);
+                        }}
+                      >
+                        <Text style={{ fontSize: Sizes.typography.base, color: Colors.light.foreground }}>
+                          {station.name}
+                        </Text>
+                        <Text style={{ fontSize: Sizes.typography.xs, color: Colors.light.mutedForeground }}>
+                          {station.category}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
           </View>
         )}
 
-        {/* Auto-PIN Section */}
-        <View style={styles.pinSection}>
-          <Text style={styles.pinLabel}>Employee PIN</Text>
-          <View style={styles.pinDisplay}>
-            <Text style={styles.pinText}>{pin}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.generateButton}
-            onPress={() => setPin(generatePin())}
-          >
-            <RefreshCw size={18} color={Colors.light.foreground} />
-            <Text style={styles.generateButtonText}>Generate New PIN</Text>
-          </TouchableOpacity>
+        {/* Join Date Field */}
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Join Date
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.light.border,
+              borderRadius: 8,
+              paddingHorizontal: Sizes.spacing.md,
+              paddingVertical: Sizes.spacing.sm,
+              fontSize: Sizes.typography.base,
+              color: Colors.light.foreground,
+            }}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={Colors.light.mutedForeground}
+            value={formData.joinDate}
+            onChangeText={(value) => handleInputChange('joinDate', value)}
+          />
         </View>
 
-        {/* Submit Button */}
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.submitButtonText}>Save Employee</Text>
-        </TouchableOpacity>
+        {/* Password Field */}
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Password *
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.light.border,
+              borderRadius: 8,
+              paddingHorizontal: Sizes.spacing.md,
+              paddingVertical: Sizes.spacing.sm,
+              fontSize: Sizes.typography.base,
+              color: Colors.light.foreground,
+            }}
+            placeholder="Enter password"
+            placeholderTextColor={Colors.light.mutedForeground}
+            secureTextEntry={true}
+            value={formData.password}
+            onChangeText={(value) => handleInputChange('password', value)}
+          />
+        </View>
+
+        {/* Confirm Password Field */}
+        <View style={{ marginBottom: Sizes.spacing.lg }}>
+          <Text style={{ fontSize: Sizes.typography.sm, fontWeight: '600', marginBottom: Sizes.spacing.sm, color: Colors.light.foreground }}>
+            Confirm Password *
+          </Text>
+          <TextInput
+            style={{
+              borderWidth: 1,
+              borderColor: Colors.light.border,
+              borderRadius: 8,
+              paddingHorizontal: Sizes.spacing.md,
+              paddingVertical: Sizes.spacing.sm,
+              fontSize: Sizes.typography.base,
+              color: Colors.light.foreground,
+            }}
+            placeholder="Confirm password"
+            placeholderTextColor={Colors.light.mutedForeground}
+            secureTextEntry={true}
+            value={formData.confirmPassword}
+            onChangeText={(value) => handleInputChange('confirmPassword', value)}
+          />
+        </View>
       </ScrollView>
+
+      {/* Submit Button */}
+      <View
+        style={{
+          paddingHorizontal: Sizes.spacing.lg,
+          paddingBottom: Sizes.spacing.lg,
+          backgroundColor: Colors.light.background,
+          borderTopWidth: 1,
+          borderTopColor: Colors.light.border,
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#FFCE1B',
+            paddingVertical: Sizes.spacing.md,
+            borderRadius: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: Sizes.spacing.sm,
+            opacity: loading ? 0.6 : 1,
+          }}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#030213" />
+          ) : (
+            <>
+              <Check size={20} color="#030213" />
+              <Text style={{ fontSize: Sizes.typography.base, fontWeight: '600', color: '#030213' }}>
+                Add Employee
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Sizes.spacing.lg,
-    paddingVertical: Sizes.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-    backgroundColor: Colors.light.card,
-  },
-  backButton: {
-    marginRight: Sizes.spacing.md,
-  },
-  headerTitle: {
-    fontSize: Sizes.typography.lg,
-    fontWeight: '600',
-    color: Colors.light.foreground,
-  },
-  formContainer: {
-    padding: Sizes.spacing.lg,
-  },
-  formGroup: {
-    marginBottom: Sizes.spacing.lg,
-  },
-  label: {
-    fontSize: Sizes.typography.sm,
-    fontWeight: '500',
-    color: Colors.light.foreground,
-    marginBottom: Sizes.spacing.sm,
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: Sizes.radius.md,
-    paddingHorizontal: Sizes.spacing.md,
-    fontSize: Sizes.typography.base,
-    color: Colors.light.foreground,
-    backgroundColor: Colors.light.background,
-  },
-  selectButton: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: Sizes.radius.md,
-    paddingHorizontal: Sizes.spacing.md,
-    justifyContent: 'center',
-    backgroundColor: Colors.light.background,
-  },
-  selectText: {
-    fontSize: Sizes.typography.base,
-    color: Colors.light.foreground,
-  },
-  dropdown: {
-    borderWidth: 1,
-    borderColor: Colors.light.border,
-    borderRadius: Sizes.radius.md,
-    marginTop: Sizes.spacing.xs,
-    backgroundColor: Colors.light.card,
-    overflow: 'hidden',
-  },
-  dropdownItem: {
-    paddingHorizontal: Sizes.spacing.md,
-    paddingVertical: Sizes.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  dropdownItemSelected: {
-    backgroundColor: Colors.light.muted,
-  },
-  dropdownItemText: {
-    fontSize: Sizes.typography.base,
-    color: Colors.light.foreground,
-  },
-  dropdownItemTextSelected: {
-    fontWeight: '600',
-  },
-  pinSection: {
-    backgroundColor: Colors.light.muted,
-    borderRadius: Sizes.radius.md,
-    padding: Sizes.spacing.lg,
-    marginBottom: Sizes.spacing.lg,
-  },
-  pinLabel: {
-    fontSize: Sizes.typography.sm,
-    fontWeight: '500',
-    color: Colors.light.foreground,
-    marginBottom: Sizes.spacing.md,
-    textAlign: 'center',
-  },
-  pinDisplay: {
-    backgroundColor: Colors.light.card,
-    borderWidth: 2,
-    borderColor: Colors.light.secondary,
-    borderRadius: Sizes.radius.md,
-    paddingVertical: Sizes.spacing.xl,
-    paddingHorizontal: Sizes.spacing.lg,
-    marginBottom: Sizes.spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pinText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: Colors.light.foreground,
-    letterSpacing: 2,
-  },
-  generateButton: {
-    flexDirection: 'row',
-    height: 44,
-    backgroundColor: Colors.light.border,
-    borderRadius: Sizes.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Sizes.spacing.sm,
-  },
-  generateButtonText: {
-    fontSize: Sizes.typography.base,
-    fontWeight: '500',
-    color: Colors.light.foreground,
-  },
-  submitButton: {
-    height: 60,
-    backgroundColor: Colors.light.secondary,
-    borderRadius: Sizes.radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Sizes.spacing.xl,
-  },
-  submitButtonText: {
-    fontSize: Sizes.typography.lg,
-    fontWeight: '600',
-    color: Colors.light.foreground,
-  },
-});
